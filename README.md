@@ -6,9 +6,11 @@ This project provides a guide for students to contribute to open source projects
 
 ```bash
 pip install -r requirements.txt
+```
 
 ## To run
 
 ```bash
 source env/Scripts/activate
 streamlit run app/main.py
+```
