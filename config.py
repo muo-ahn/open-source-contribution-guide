@@ -1,5 +1,0 @@
-import os
-
-GITHUB_API_TOKEN = os.getenv('GITHUB_API_TOKEN')
-AWS_REGION = os.getenv('AWS_REGION')
-BEDROCK_MODEL_NAME = os.getenv('BEDROCK_MODEL_NAME')

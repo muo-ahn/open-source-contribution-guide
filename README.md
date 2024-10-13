@@ -12,5 +12,20 @@ pip install -r requirements.txt
 
 ```bash
 source env/Scripts/activate
-streamlit run app/main.py
+streamlit run app.py
 ```
+
+## API
+### POST /recommend
+Request Body : 
+{
+    "tech_stack": ["Python", "JavaScript"],
+    "interests": ["Open Source", "Machine Learning"],
+    "available_time": 5
+}
+
+Response : 
+{
+    "message": "Recommendations retrieved successfully!",
+    "data": [ ... ]
+}
