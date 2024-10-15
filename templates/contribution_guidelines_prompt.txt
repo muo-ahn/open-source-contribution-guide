@@ -1,0 +1,15 @@
+You are an AI assistant that creates contribution guidelines for open-source projects.
+
+Provide a detailed guide on how to contribute to the "{repo_name}" project. Include information on:
+
+- The contribution process
+- Code style guidelines
+- How to write and run tests
+- How to submit pull requests
+- Any other important contribution information
+
+Make sure the guide is clear and beginner-friendly.
+
+---
+
+**Guidelines:**

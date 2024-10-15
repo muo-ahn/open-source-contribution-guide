@@ -1,31 +1,32 @@
 # Open Source Contribution Guide
 
-This project provides a guide for students to contribute to open source projects by recommending suitable projects based on their skills and interests.
+This Streamlit web application assists users in finding and contributing to open-source projects that match their skills and interests.
 
-## Installation
+## Features
 
-```bash
-pip install -r requirements.txt
-```
+- **Personalized Project Recommendations**: Based on user-inputted technology stack and interests.
+- **Project Culture Analysis**: Provides insights into project culture using AI.
+- **Contribution Guidelines**: Generates detailed, beginner-friendly contribution guides for each project.
 
-## To run
+## Getting Started
 
-```bash
-source env/Scripts/activate
-streamlit run app.py
-```
+### Prerequisites
 
-## API
-### POST /recommend
-Request Body : 
-{
-    "tech_stack": ["Python", "JavaScript"],
-    "interests": ["Open Source", "Machine Learning"],
-    "available_time": 5
-}
+- Python 3.7 or higher
+- Git
+- GitHub API Token
+- OpenAI API Key
 
-Response : 
-{
-    "message": "Recommendations retrieved successfully!",
-    "data": [ ... ]
-}
+### Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/muo-ahn/open-source-contribution-guide
+   cd open_source_contribution_guide
+
+### Running the Application
+
+    ```bash
+    streamlit run app.py
+    ```

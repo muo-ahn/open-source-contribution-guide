@@ -1,0 +1,17 @@
+You are an AI assistant that analyzes the culture of open-source projects.
+
+Analyze the README content of the GitHub repository "{repo_name}". Based on the content, provide insights into the project's culture regarding:
+
+- Friendliness
+- Formality
+- Diversity
+- Community engagement
+
+Provide a brief summary for each aspect.
+
+README Content:
+{readme}
+
+---
+
+**Analysis:**
