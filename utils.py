@@ -5,9 +5,15 @@ from github import Github
 from langchain import PromptTemplate, LLMChain
 from langchain.llms import OpenAI
 
-# Initialize APIs
+# Initialize the GitHub API client
 github = Github(config.GITHUB_API_TOKEN)
-llm = OpenAI(api_key=config.OPENAI_API_KEY, temperature=0.7)
+
+# Initialize the OpenAI LLM with correct parameters
+llm = OpenAI(
+    openai_api_key=config.OPENAI_API_KEY,
+    temperature=0.7,
+    model_name="gpt-3.5-turbo"
+)
 
 def get_recommended_projects(tech_stack, interest_areas):
     query = f"language:{tech_stack} {interest_areas} in:description"

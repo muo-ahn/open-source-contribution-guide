@@ -1,7 +1,6 @@
 # app.py
 
 import streamlit as st
-from langchain import PromptTemplate, LLMChain
 from langchain.llms import OpenAI
 from utils import (
     get_recommended_projects,
@@ -10,8 +9,12 @@ from utils import (
 )
 import config
 
-# Initialize the OpenAI LLM
-llm = OpenAI(api_key=config.OPENAI_API_KEY, temperature=0.7)
+# Initialize the OpenAI LLM with correct parameters
+llm = OpenAI(
+    openai_api_key=config.OPENAI_API_KEY,
+    temperature=0.7,
+    model_name="gpt-3.5-turbo"
+)
 
 # Streamlit App
 st.set_page_config(page_title="Open Source Contribution Guide", layout="wide")
