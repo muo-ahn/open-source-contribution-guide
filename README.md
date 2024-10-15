@@ -28,6 +28,6 @@ This Streamlit web application assists users in finding and contributing to open
 
 ### Running the Application
 
-    ```bash
+    ```sh
     streamlit run app.py
     ```
