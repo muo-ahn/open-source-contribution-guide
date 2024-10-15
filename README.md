@@ -24,6 +24,7 @@ This Streamlit web application assists users in finding and contributing to open
    ```bash
    git clone https://github.com/muo-ahn/open-source-contribution-guide
    cd open_source_contribution_guide
+   ```
 
 ### Running the Application
 
