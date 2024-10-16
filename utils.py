@@ -27,7 +27,6 @@ def truncate_text(text, max_tokens):
     return text
 
 def summarize_text(text, max_tokens=500):
-    # Truncate text to prevent exceeding context length
     max_input_tokens = 3000
     text = truncate_text(text, max_input_tokens)
 
