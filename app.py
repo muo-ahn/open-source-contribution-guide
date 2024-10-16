@@ -19,6 +19,16 @@ llm = ChatOpenAI(
     model_name="gpt-3.5-turbo-16k"  # Using the 16k model for larger context
 )
 
+# Function to format messages for chatbot layout
+def format_messages(messages):
+    formatted_messages = ""
+    for message in messages:
+        if message["role"] == "assistant":
+            formatted_messages += f"<div style='text-align: left; color: blue;'><b>Assistant:</b> {message['content']}</div><br>"
+        else:
+            formatted_messages += f"<div style='text-align: right; color: green;'><b>You:</b> {message['content']}</div><br>"
+    return formatted_messages
+
 # Streamlit App Configuration
 st.set_page_config(page_title="Open Source Contribution Guide", layout="wide")
 
@@ -152,7 +162,7 @@ def format_messages(messages):
     formatted_messages = ""
     for message in messages:
         if message["role"] == "assistant":
-            formatted_messages += f"<div style='text-align: left;'><b>Assistant:</b> {message['content']}</div><br>"
+            formatted_messages += f"<div style='text-align: left; color: blue;'><b>Assistant:</b> {message['content']}</div><br>"
         else:
-            formatted_messages += f"<div style='text-align: right;'><b>You:</b> {message['content']}</div><br>"
+            formatted_messages += f"<div style='text-align: right; color: green;'><b>You:</b> {message['content']}</div><br>"
     return formatted_messages
