@@ -11,7 +11,7 @@ from utils import (
     get_recommended_projects,
     analyze_project_culture,
     generate_contribution_guidelines,
-    summarize_text  # Import the summarize_text function
+    summarize_text
 )
 import config
 

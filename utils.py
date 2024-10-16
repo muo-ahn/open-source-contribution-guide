@@ -26,12 +26,12 @@ def truncate_text(text, max_tokens):
 
     return text
 
-def summarize_readme(readme_contents):
-    # Truncate readme to prevent exceeding context length
-    max_tokens = 3000  # Adjust as needed
-    readme_contents = truncate_text(readme_contents, max_tokens)
+def summarize_text(text, max_tokens=500):
+    # Truncate text to prevent exceeding context length
+    max_input_tokens = 3000
+    text = truncate_text(text, max_input_tokens)
 
-    prompt = f"Please provide a concise summary (max 500 words) of the following README:\n\n{readme_contents}"
+    prompt = f"Please provide a concise summary (max {max_tokens} words) of the following text:\n\n{text}"
     summary = llm.predict(prompt)
     return summary
 
@@ -60,7 +60,7 @@ def get_recommended_projects(tech_stack, interest_areas):
 
 def analyze_project_culture(repo_name, readme_contents):
     # Summarize the README content
-    summarized_readme = summarize_readme(readme_contents)
+    summarized_readme = summarize_text(readme_contents, max_tokens=500)
 
     # Truncate the summary if necessary
     summarized_readme = truncate_text(summarized_readme, 2000)
