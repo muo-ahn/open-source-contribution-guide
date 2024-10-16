@@ -35,14 +35,23 @@ def get_recommended_projects(tech_stack, interest_areas):
         top_repos.append(repo_info)
     return top_repos
 
+def summarize_readme(readme_contents):
+    prompt = f"Summarize the following README content in 500 words:\n\n{readme_contents}"
+    summary = llm.predict(prompt)
+    return summary
+
 def analyze_project_culture(repo_name, readme_contents):
+    # Summarize the README content
+    summarized_readme = summarize_readme(readme_contents)
+
     prompt_template = PromptTemplate(
         input_variables=["repo_name", "readme"],
         template=open('templates/culture_analysis_prompt.txt').read(),
     )
     chain = LLMChain(llm=llm, prompt=prompt_template)
-    analysis = chain.run(repo_name=repo_name, readme=readme_contents)
+    analysis = chain.run(repo_name=repo_name, readme=summarized_readme)
     return analysis
+
 
 def generate_contribution_guidelines(repo_name):
     prompt_template = PromptTemplate(
