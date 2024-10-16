@@ -4,6 +4,7 @@ import config
 from github import Github
 from langchain import PromptTemplate, LLMChain
 from langchain.chat_models import ChatOpenAI
+import tiktoken
 
 # Initialize the GitHub API client
 github = Github(config.GITHUB_API_TOKEN)
@@ -12,15 +13,35 @@ github = Github(config.GITHUB_API_TOKEN)
 llm = ChatOpenAI(
     openai_api_key=config.OPENAI_API_KEY,
     temperature=0.7,
-    model_name="gpt-3.5-turbo"
+    model_name="gpt-3.5-turbo-16k"
 )
 
+def truncate_text(text, max_tokens):
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    tokens = tokenizer.encode(text)
+
+    if len(tokens) > max_tokens:
+        tokens = tokens[:max_tokens]
+        text = tokenizer.decode(tokens) + "\n[Text truncated due to length.]"
+
+    return text
+
+def summarize_readme(readme_contents):
+    # Truncate readme to prevent exceeding context length
+    max_tokens = 3000  # Adjust as needed
+    readme_contents = truncate_text(readme_contents, max_tokens)
+
+    prompt = f"Please provide a concise summary (max 500 words) of the following README:\n\n{readme_contents}"
+    summary = llm.predict(prompt)
+    return summary
+
 def get_recommended_projects(tech_stack, interest_areas):
-    query = f"language:{tech_stack} {interest_areas} in:description"
+    query = f"{interest_areas} language:{tech_stack} in:description"
+
     repositories = github.search_repositories(query=query, sort='stars', order='desc')
 
     top_repos = []
-    for repo in repositories[:5]:
+    for repo in repositories:
         try:
             readme_contents = repo.get_readme().decoded_content.decode('utf-8')
         except Exception:
@@ -33,30 +54,47 @@ def get_recommended_projects(tech_stack, interest_areas):
             'readme': readme_contents,
         }
         top_repos.append(repo_info)
+        if len(top_repos) >= 5:
+            break
     return top_repos
-
-def summarize_readme(readme_contents):
-    prompt = f"Summarize the following README content in 500 words:\n\n{readme_contents}"
-    summary = llm.predict(prompt)
-    return summary
 
 def analyze_project_culture(repo_name, readme_contents):
     # Summarize the README content
     summarized_readme = summarize_readme(readme_contents)
 
+    # Truncate the summary if necessary
+    summarized_readme = truncate_text(summarized_readme, 2000)
+
+    # Prepare the prompt
+    prompt_template_content = open('templates/culture_analysis_prompt.txt', encoding='utf-8').read()
     prompt_template = PromptTemplate(
         input_variables=["repo_name", "readme"],
-        template=open('templates/culture_analysis_prompt.txt').read(),
+        template=prompt_template_content,
     )
+
+    # Estimate tokens
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    prompt_text = prompt_template.format(repo_name=repo_name, readme=summarized_readme)
+    prompt_tokens = len(tokenizer.encode(prompt_text))
+    max_allowed_tokens = 16384  # For gpt-3.5-turbo-16k
+    max_response_tokens = 1000  # Estimate of the maximum tokens in the response
+
+    if prompt_tokens + max_response_tokens > max_allowed_tokens:
+        # Truncate the summarized_readme further
+        allowed_tokens_for_readme = max_allowed_tokens - prompt_tokens - max_response_tokens
+        summarized_readme = truncate_text(summarized_readme, allowed_tokens_for_readme)
+        # Recalculate prompt_tokens
+        prompt_text = prompt_template.format(repo_name=repo_name, readme=summarized_readme)
+        prompt_tokens = len(tokenizer.encode(prompt_text))
+
     chain = LLMChain(llm=llm, prompt=prompt_template)
     analysis = chain.run(repo_name=repo_name, readme=summarized_readme)
     return analysis
 
-
 def generate_contribution_guidelines(repo_name):
     prompt_template = PromptTemplate(
         input_variables=["repo_name"],
-        template=open('templates/contribution_guidelines_prompt.txt').read(),
+        template=open('templates/contribution_guidelines_prompt.txt', encoding='utf-8').read(),
     )
     chain = LLMChain(llm=llm, prompt=prompt_template)
     guidelines = chain.run(repo_name=repo_name)

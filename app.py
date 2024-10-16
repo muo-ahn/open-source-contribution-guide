@@ -1,7 +1,9 @@
 # app.py
 
 import streamlit as st
-from langchain import PromptTemplate, LLMChain
+import os
+import pdfkit
+from jinja2 import Template
 from langchain.chat_models import ChatOpenAI
 from utils import (
     get_recommended_projects,
@@ -14,10 +16,10 @@ import config
 llm = ChatOpenAI(
     openai_api_key=config.OPENAI_API_KEY,
     temperature=0.7,
-    model_name="gpt-3.5-turbo"
+    model_name="gpt-3.5-turbo-16k"
 )
 
-# Streamlit App
+# Streamlit App Configuration
 st.set_page_config(page_title="Open Source Contribution Guide", layout="wide")
 st.title("Open Source Contribution Guide")
 
@@ -40,10 +42,10 @@ with st.form(key='user_input_form'):
     submit_button = st.form_submit_button(label='Find Projects')
 
 if submit_button:
-    if not tech_stack or not interest_areas:
+    if not tech_stack.strip() or not interest_areas.strip():
         st.error("Please provide both your technology stack and areas of interest.")
     else:
-        # 2. Project Recommendation Stage
+        # 2. Project Recommendations
         st.header("2. Project Recommendations")
 
         with st.spinner("Fetching recommended projects..."):
@@ -52,27 +54,68 @@ if submit_button:
         if not recommended_projects:
             st.warning("No projects found. Please try different inputs.")
         else:
+            st.header("3. Project Details")
+
+            project_data = []
+
             for idx, project in enumerate(recommended_projects):
                 st.subheader(f"{idx + 1}. {project['name']}")
                 st.write(f"**Description:** {project['description']}")
                 st.write(f"**URL:** [{project['url']}]({project['url']})")
 
-            # 3. Culture Analysis Stage
-            st.header("3. Project Culture Analysis")
-
-            for project in recommended_projects:
-                st.subheader(project['name'])
+                # Culture Analysis
                 with st.spinner(f"Analyzing culture for {project['name']}..."):
                     culture_analysis = analyze_project_culture(
                         project['name'], project['readme']
                     )
+                st.markdown("### Culture Analysis")
                 st.write(culture_analysis)
 
-            # 4. Contribution Guidelines and Educational Materials
-            st.header("4. Contribution Guidelines and Educational Materials")
-
-            for project in recommended_projects:
-                st.subheader(f"Guidelines for {project['name']}")
+                # Contribution Guidelines
                 with st.spinner(f"Generating guidelines for {project['name']}..."):
                     guidelines = generate_contribution_guidelines(project['name'])
+                st.markdown("### Contribution Guidelines")
                 st.write(guidelines)
+
+                st.markdown("---")  # Separator between projects
+
+                # Collect data for PDF
+                project_info = {
+                    'name': project['name'],
+                    'description': project['description'],
+                    'url': project['url'],
+                    'culture_analysis': culture_analysis,
+                    'guidelines': guidelines
+                }
+                project_data.append(project_info)
+
+            # Button to generate PDF
+            if st.button("Download Project Details as PDF"):
+                with st.spinner("Generating PDF..."):
+                    # Generate HTML content using Jinja2 template
+                    template = Template(open('templates/pdf_template.html', encoding='utf-8').read())
+                    html_content = template.render(projects=project_data)
+
+                    # Save the HTML content to a temporary file
+                    with open('temp.html', 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+
+                    # Generate PDF using pdfkit
+                    pdfkit.from_file('temp.html', 'output.pdf')
+
+                    # Remove the temporary HTML file
+                    os.remove('temp.html')
+
+                    # Provide the PDF file for download
+                    with open('output.pdf', 'rb') as f:
+                        pdf_data = f.read()
+
+                    st.download_button(
+                        label="Download PDF",
+                        data=pdf_data,
+                        file_name='project_details.pdf',
+                        mime='application/pdf'
+                    )
+
+                    # Remove the PDF file
+                    os.remove('output.pdf')
