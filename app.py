@@ -114,6 +114,7 @@ if submit_button:
             # Button to generate PDF
             if project_data:
                 if st.button("Download Project Details as PDF"):
+                    logging.info("CLICKED GENERATE PDF")
                     with st.spinner("Generating PDF..."):
                         try:
                             # Log the action
