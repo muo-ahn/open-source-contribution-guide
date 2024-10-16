@@ -1,7 +1,8 @@
 # app.py
 
 import streamlit as st
-from langchain.llms import OpenAI
+from langchain import PromptTemplate, LLMChain
+from langchain.chat_models import ChatOpenAI
 from utils import (
     get_recommended_projects,
     analyze_project_culture,
@@ -9,8 +10,8 @@ from utils import (
 )
 import config
 
-# Initialize the OpenAI LLM with correct parameters
-llm = OpenAI(
+# Initialize the OpenAI Chat LLM
+llm = ChatOpenAI(
     openai_api_key=config.OPENAI_API_KEY,
     temperature=0.7,
     model_name="gpt-3.5-turbo"
