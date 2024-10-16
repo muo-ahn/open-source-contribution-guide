@@ -15,7 +15,11 @@ from utils import (
 import config
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    filename='app.log',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s:%(message)s'
+)
 
 # Initialize session state for analyzed projects
 if 'analyzed_projects' not in st.session_state:
@@ -58,7 +62,6 @@ if submit_button:
         else:
             st.write("Here are some projects you might be interested in:")
             # Display summaries and individual analyze buttons
-            project_data = []
             for idx, project in enumerate(recommended_projects):
                 st.subheader(f"{idx + 1}. {project['name']}")
                 st.write(f"**Description:** {project['description']}")
@@ -113,9 +116,15 @@ if submit_button:
                 if st.button("Download Project Details as PDF"):
                     with st.spinner("Generating PDF..."):
                         try:
+                            logging.info("Starting PDF generation...")
                             # Generate HTML content using Jinja2 template
-                            template = Template(open('templates/pdf_template.html', encoding='utf-8').read())
+                            template_path = 'templates/pdf_template.html'
+                            logging.debug(f"Loading template from {template_path}")
+                            with open(template_path, encoding='utf-8') as f:
+                                template = Template(f.read())
+
                             html_content = template.render(projects=project_data)
+                            logging.debug("HTML content rendered for PDF.")
 
                             # Use a temporary directory
                             with tempfile.TemporaryDirectory() as tmpdirname:
@@ -125,9 +134,13 @@ if submit_button:
                                 # Save the HTML content to a temporary file
                                 with open(html_path, 'w', encoding='utf-8') as f:
                                     f.write(html_content)
+                                logging.debug(f"HTML content saved to {html_path}")
 
                                 # Generate PDF using pdfkit
-                                pdfkit.from_file(html_path, pdf_path)
+                                logging.debug("Attempting to generate PDF with pdfkit...")
+                                config_pdfkit = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf')  # Update path if necessary
+                                pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
+                                logging.info(f"PDF generated at {pdf_path}")
 
                                 # Provide the PDF file for download
                                 with open(pdf_path, 'rb') as f:
@@ -139,6 +152,7 @@ if submit_button:
                                     file_name='project_details.pdf',
                                     mime='application/pdf'
                                 )
+                                logging.info("PDF provided for download.")
                         except Exception as e:
                             st.error(f"An error occurred while generating the PDF: {e}")
                             logging.exception("PDF Generation Error")
