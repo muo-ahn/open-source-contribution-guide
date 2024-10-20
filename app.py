@@ -2,28 +2,32 @@
 
 import streamlit as st
 import os
-import pdfkit
-import tempfile
 import logging
+import time
 from jinja2 import Template
 from utils import (
     get_recommended_projects,
     analyze_project_culture,
     generate_contribution_guidelines,
-    summarize_text  # Import the summarize_text function
+    summarize_text
 )
 import config
+import boto3
+import pdfkit
 
 # Configure logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,  # Set level to INFO to reduce verbosity
-    format='%(asctime)s %(levelname)s:%(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 
 # Initialize session state for analyzed projects
 if 'analyzed_projects' not in st.session_state:
     st.session_state['analyzed_projects'] = {}
+
+# AWS S3 Configuration
+S3_BUCKET_NAME = config.S3_BUCKET_NAME
+S3_REGION_NAME = config.AWS_REGION  # Assuming same region
+
+# Initialize S3 client
+s3_client = boto3.client('s3', region_name=S3_REGION_NAME)
 
 # Streamlit App Configuration
 st.set_page_config(page_title="Open Source Contribution Guide", layout="wide")
@@ -67,7 +71,7 @@ if submit_button:
                 st.write(f"**Description:** {project['description']}")
                 st.write(f"**URL:** [{project['url']}]({project['url']})")
                 with st.spinner(f"Generating summary for {project['name']}..."):
-                    summary = summarize_text(project['readme'], max_tokens=150)
+                    summary = summarize_text(project['readme'])
                 st.markdown("**Summary:**")
                 st.write(summary)
 
@@ -111,47 +115,59 @@ if submit_button:
                 for idx, data in st.session_state['analyzed_projects'].items()
             ]
 
-            # Button to generate PDF
+            # Button to generate PDF and upload to S3
             if project_data:
-                if st.button("Download Project Details as PDF"):
-                    logging.info("CLICKED GENERATE PDF")
-                    with st.spinner("Generating PDF..."):
+                if st.button("Generate PDF and Upload to S3"):
+                    with st.spinner("Generating PDF and uploading to S3..."):
                         try:
-                            # Log the action
-                            logging.info("User initiated PDF generation.")
+                            logging.info("Starting PDF generation...")
                             # Generate HTML content using Jinja2 template
                             template_path = 'templates/pdf_template.html'
                             with open(template_path, encoding='utf-8') as f:
                                 template = Template(f.read())
 
                             html_content = template.render(projects=project_data)
+                            logging.info("HTML content rendered for PDF.")
 
-                            # Use a temporary directory
-                            with tempfile.TemporaryDirectory() as tmpdirname:
-                                html_path = os.path.join(tmpdirname, 'temp.html')
-                                pdf_path = os.path.join(tmpdirname, 'output.pdf')
+                            # Define the paths for saving the files
+                            output_dir = os.path.join(os.getcwd(), 'output_files')
+                            os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
+                            html_path = os.path.join(output_dir, 'temp.html')
+                            pdf_path = os.path.join(output_dir, 'project_details.pdf')
 
-                                # Save the HTML content to a temporary file
-                                with open(html_path, 'w', encoding='utf-8') as f:
-                                    f.write(html_content)
+                            # Save the HTML content to a file
+                            with open(html_path, 'w', encoding='utf-8') as f:
+                                f.write(html_content)
+                            logging.info(f"HTML content saved to {html_path}")
 
-                                # Generate PDF using pdfkit
-                                # Update path if necessary
-                                wkhtmltopdf_path = '/usr/local/bin/wkhtmltopdf'
-                                config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
-                                pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
+                            # Generate PDF using pdfkit
+                            logging.info("Attempting to generate PDF with pdfkit...")
+                            wkhtmltopdf_path = '/usr/local/bin/wkhtmltopdf'  # Update this path if necessary
+                            config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
+                            pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
+                            logging.info(f"PDF generated at {pdf_path}")
 
-                                # Provide the PDF file for download
-                                with open(pdf_path, 'rb') as f:
-                                    pdf_data = f.read()
+                            # Upload PDF to S3
+                            s3_key = f'project_details_{int(time.time())}.pdf'
+                            logging.info(f"Uploading PDF to S3 bucket {S3_BUCKET_NAME} with key {s3_key}...")
+                            s3_client.upload_file(pdf_path, S3_BUCKET_NAME, s3_key)
+                            logging.info("PDF uploaded to S3.")
 
-                                st.download_button(
-                                    label="Download PDF",
-                                    data=pdf_data,
-                                    file_name='project_details.pdf',
-                                    mime='application/pdf'
-                                )
-                                logging.info("PDF generated and provided for download.")
+                            # Generate a pre-signed URL
+                            presigned_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': S3_BUCKET_NAME, 'Key': s3_key},
+                                ExpiresIn=3600  # URL expires in 1 hour
+                            )
+                            logging.info("Generated pre-signed URL.")
+
+                            st.success("PDF generated and uploaded to S3.")
+                            st.markdown(f"**Download your PDF here:** [Download PDF]({presigned_url})")
+
+                            # Cleanup temporary files
+                            os.remove(pdf_path)
+                            os.remove(html_path)
+
                         except Exception as e:
-                            st.error(f"An error occurred while generating the PDF: {e}")
-                            logging.error(f"PDF Generation Error: {e}")
+                            st.error(f"An error occurred: {e}")
+                            logging.error(f"PDF Generation or S3 Upload Error: {e}")
