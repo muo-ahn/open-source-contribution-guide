@@ -1,8 +1,9 @@
 # utils.py
 
 import config
+import boto3
 from github import Github
-from langchain.llms.bedrock import Bedrock
+from langchain.llms.bedrock import BedrockLLM
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
@@ -10,10 +11,10 @@ from langchain.chains import LLMChain
 github = Github(config.GITHUB_API_TOKEN)
 
 # Initialize the Bedrock LLM
-llm = Bedrock(
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=config.AWS_REGION)
+llm = BedrockLLM(
     model_id="anthropic.claude-v2",
-    region_name=config.AWS_REGION,
-    # Adjust model_kwargs as needed
+    client=bedrock_runtime,
     model_kwargs={
         "temperature": 0.7,
         "max_tokens_to_sample": 500
