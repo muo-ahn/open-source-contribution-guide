@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import os
 import logging
@@ -18,9 +16,12 @@ import pdfkit
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
-# Initialize session state for analyzed projects
+# Initialize session state for analyzed projects and recommended projects
 if 'analyzed_projects' not in st.session_state:
     st.session_state['analyzed_projects'] = {}
+
+if 'recommended_projects' not in st.session_state:
+    st.session_state['recommended_projects'] = []
 
 # AWS S3 Configuration
 S3_BUCKET_NAME = config.S3_BUCKET_NAME
@@ -51,6 +52,7 @@ with st.form(key='user_input_form'):
     )
     submit_button = st.form_submit_button(label='Find Projects')
 
+# Fetch and display recommended projects
 if submit_button:
     if not tech_stack.strip() or not interest_areas.strip():
         st.error("Please provide both your technology stack and areas of interest.")
@@ -60,12 +62,12 @@ if submit_button:
 
         with st.spinner("Fetching recommended projects..."):
             recommended_projects = get_recommended_projects(tech_stack, interest_areas)
+            st.session_state['recommended_projects'] = recommended_projects
 
         if not recommended_projects:
             st.warning("No projects found. Please try different inputs.")
         else:
             st.write("Here are some projects you might be interested in:")
-            # Display summaries and individual analyze buttons
             for idx, project in enumerate(recommended_projects):
                 st.subheader(f"{idx + 1}. {project['name']}")
                 st.write(f"**Description:** {project['description']}")
@@ -75,24 +77,27 @@ if submit_button:
                 st.markdown("**Summary:**")
                 st.write(summary)
 
+                # Ensure session state is populated for this project
+                if idx not in st.session_state['analyzed_projects']:
+                    st.session_state['analyzed_projects'][idx] = {
+                        'project_info': project,
+                        'culture_analysis': None,
+                        'guidelines': None
+                    }
+
                 # Individual Analyze Button
                 analyze_button = st.button(f"Analyze {project['name']}", key=f"analyze_{idx}")
 
-                if analyze_button or st.session_state['analyzed_projects'].get(idx):
-                    if not st.session_state['analyzed_projects'].get(idx):
-                        # Perform analysis and store results in session state
+                if analyze_button:
+                    # Perform analysis and store results in session state
+                    if st.session_state['analyzed_projects'][idx]['culture_analysis'] is None:
                         with st.spinner(f"Analyzing culture for {project['name']}..."):
-                            culture_analysis = analyze_project_culture(
-                                project['name'], project['readme']
-                            )
+                            culture_analysis = analyze_project_culture(project['name'], project['readme'])
+                            st.session_state['analyzed_projects'][idx]['culture_analysis'] = culture_analysis
+
                         with st.spinner(f"Generating guidelines for {project['name']}..."):
                             guidelines = generate_contribution_guidelines(project['name'])
-
-                        st.session_state['analyzed_projects'][idx] = {
-                            'culture_analysis': culture_analysis,
-                            'guidelines': guidelines,
-                            'project_info': project  # Store project info for PDF
-                        }
+                            st.session_state['analyzed_projects'][idx]['guidelines'] = guidelines
 
                     # Display analysis results
                     st.markdown("### Culture Analysis")
@@ -103,71 +108,71 @@ if submit_button:
 
                 st.markdown("---")  # Separator between projects
 
-            # Collect analyzed projects for PDF
-            project_data = [
-                {
-                    'name': data['project_info']['name'],
-                    'description': data['project_info']['description'],
-                    'url': data['project_info']['url'],
-                    'culture_analysis': data['culture_analysis'],
-                    'guidelines': data['guidelines']
-                }
-                for idx, data in st.session_state['analyzed_projects'].items()
-            ]
+# Collect analyzed projects for PDF
+project_data = [
+    {
+        'name': data['project_info']['name'],
+        'description': data['project_info']['description'],
+        'url': data['project_info']['url'],
+        'culture_analysis': data['culture_analysis'],
+        'guidelines': data['guidelines']
+    }
+    for idx, data in st.session_state['analyzed_projects'].items()
+]
 
-            # Button to generate PDF and upload to S3
-            if project_data:
-                if st.button("Generate PDF and Upload to S3"):
-                    with st.spinner("Generating PDF and uploading to S3..."):
-                        try:
-                            logging.info("Starting PDF generation...")
-                            # Generate HTML content using Jinja2 template
-                            template_path = 'templates/pdf_template.html'
-                            with open(template_path, encoding='utf-8') as f:
-                                template = Template(f.read())
+# Button to generate PDF and upload to S3
+if project_data:
+    if st.button("Generate PDF and Upload to S3"):
+        with st.spinner("Generating PDF and uploading to S3..."):
+            try:
+                logging.info("Starting PDF generation...")
+                # Generate HTML content using Jinja2 template
+                template_path = 'templates/pdf_template.html'
+                with open(template_path, encoding='utf-8') as f:
+                    template = Template(f.read())
 
-                            html_content = template.render(projects=project_data)
-                            logging.info("HTML content rendered for PDF.")
+                html_content = template.render(projects=project_data)
+                logging.info("HTML content rendered for PDF.")
 
-                            # Define the paths for saving the files
-                            output_dir = os.path.join(os.getcwd(), 'output_files')
-                            os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
-                            html_path = os.path.join(output_dir, 'temp.html')
-                            pdf_path = os.path.join(output_dir, 'project_details.pdf')
+                # Define the paths for saving the files
+                output_dir = os.path.join(os.getcwd(), 'output_files')
+                os.makedirs(output_dir, exist_ok=True)  # Create the directory if it doesn't exist
+                html_path = os.path.join(output_dir, 'temp.html')
+                pdf_path = os.path.join(output_dir, 'project_details.pdf')
 
-                            # Save the HTML content to a file
-                            with open(html_path, 'w', encoding='utf-8') as f:
-                                f.write(html_content)
-                            logging.info(f"HTML content saved to {html_path}")
+                # Save the HTML content to a file
+                with open(html_path, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                logging.info(f"HTML content saved to {html_path}")
 
-                            # Generate PDF using pdfkit
-                            logging.info("Attempting to generate PDF with pdfkit...")
-                            wkhtmltopdf_path = '/usr/local/bin/wkhtmltopdf'  # Update this path if necessary
-                            config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
-                            pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
-                            logging.info(f"PDF generated at {pdf_path}")
+                # Generate PDF using pdfkit
+                logging.info("Attempting to generate PDF with pdfkit...")
+                wkhtmltopdf_path = '/usr/local/bin/wkhtmltopdf'  # Update this path if necessary
+                config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
+                pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
+                logging.info(f"PDF generated at {pdf_path}")
 
-                            # Upload PDF to S3
-                            s3_key = f'project_details_{int(time.time())}.pdf'
-                            logging.info(f"Uploading PDF to S3 bucket {S3_BUCKET_NAME} with key {s3_key}...")
-                            s3_client.upload_file(pdf_path, S3_BUCKET_NAME, s3_key)
-                            logging.info("PDF uploaded to S3.")
+                # Upload PDF to S3
+                s3_key = f'project_details_{int(time.time())}.pdf'
+                logging.info(f"Uploading PDF to S3 bucket {S3_BUCKET_NAME} with key {s3_key}...")
+                s3_client.upload_file(pdf_path, S3_BUCKET_NAME, s3_key)
+                logging.info("PDF uploaded to S3.")
 
-                            # Generate a pre-signed URL
-                            presigned_url = s3_client.generate_presigned_url(
-                                'get_object',
-                                Params={'Bucket': S3_BUCKET_NAME, 'Key': s3_key},
-                                ExpiresIn=3600  # URL expires in 1 hour
-                            )
-                            logging.info("Generated pre-signed URL.")
+                # Generate a pre-signed URL
+                presigned_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': S3_BUCKET_NAME, 'Key': s3_key},
+                    ExpiresIn=3600  # URL expires in 1 hour
+                )
+                logging.info("Generated pre-signed URL.")
 
-                            st.success("PDF generated and uploaded to S3.")
-                            st.markdown(f"**Download your PDF here:** [Download PDF]({presigned_url})")
+                st.success("PDF generated and uploaded to S3.")
+                st.markdown(f"**Download your PDF here:** [Download PDF]({presigned_url})")
 
-                            # Cleanup temporary files
-                            os.remove(pdf_path)
-                            os.remove(html_path)
+                # Cleanup temporary files
+                os.remove(pdf_path)
+                os.remove(html_path)
 
-                        except Exception as e:
-                            st.error(f"An error occurred: {e}")
-                            logging.error(f"PDF Generation or S3 Upload Error: {e}")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                logging.error(f"PDF Generation or S3 Upload Error: {e}")

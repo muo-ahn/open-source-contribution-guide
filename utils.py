@@ -1,5 +1,3 @@
-#util_aws.py
-
 import config
 import boto3
 from github import Github
