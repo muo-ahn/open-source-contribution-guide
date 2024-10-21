@@ -1,5 +1,3 @@
-# app.py
-
 import streamlit as st
 import os
 import logging
@@ -9,11 +7,14 @@ from utils import (
     get_recommended_projects,
     analyze_project_culture,
     generate_contribution_guidelines,
-    summarize_text
+    summarize_text,
+    translate_text_with_claude,
 )
 import config
 import boto3
 import pdfkit
+
+from icons import fork_svg
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +34,17 @@ s3_client = boto3.client('s3', region_name=S3_REGION_NAME)
 st.set_page_config(page_title="Open Source Contribution Guide", layout="wide")
 st.title("Open Source Contribution Guide")
 
+# Number formatting function for stars and forks only
+def format_number(num):
+    if num >= 1000000:
+        return f"{num / 1000000:.1f}M"  # 100만 이상이면 M으로 표시
+    elif num >= 1000:
+        return f"{num / 1000:.1f}k"  # 1,000 이상이면 k로 표시
+    else:
+        return str(num)  # 1,000 이하이면 숫자 그대로 표시
+
+
+
 # 1. User Input Stage
 st.header("1. User Input")
 
@@ -49,6 +61,8 @@ with st.form(key='user_input_form'):
         max_value=40,
         value=5,
     )
+    target_language = st.text_input("Enter the target language (e.g., Korean, Spanish):", value="")
+    
     submit_button = st.form_submit_button(label='Find Projects')
 
 if submit_button:
@@ -69,11 +83,26 @@ if submit_button:
             for idx, project in enumerate(recommended_projects):
                 st.subheader(f"{idx + 1}. {project['name']}")
                 st.write(f"**Description:** {project['description']}")
+                
+                # Only apply formatting to stars and forks
+                formatted_stars = format_number(project['stars'])
+                formatted_forks = format_number(project['forks'])
+                
+                st.write(f"**Stars:** {formatted_stars} ⭐")  # 포맷된 스타 수 출력
+                st.markdown(f"**Forks:** {formatted_forks} {fork_svg}", unsafe_allow_html=True)  # fork_svg를 icons.py에서 import
                 st.write(f"**URL:** [{project['url']}]({project['url']})")
+                
                 with st.spinner(f"Generating summary for {project['name']}..."):
                     summary = summarize_text(project['readme'])
-                st.markdown("**Summary:**")
-                st.write(summary)
+                    
+                    # 번역 요청 추가
+                    if target_language.strip():
+                        translated_summary = translate_text_with_claude(summary, target_language)
+                        st.markdown(f"**Summary ({target_language}):**")
+                        st.write(translated_summary)
+                    else:
+                        st.markdown("**Summary:**")
+                        st.write(summary)
 
                 # Individual Analyze Button
                 analyze_button = st.button(f"Analyze {project['name']}", key=f"analyze_{idx}")
