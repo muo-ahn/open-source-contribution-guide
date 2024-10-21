@@ -85,29 +85,29 @@ if submit_button:
                         'guidelines': None
                     }
 
-                # Individual Analyze Button
-                analyze_button = st.button(f"Analyze {project['name']}", key=f"analyze_{idx}")
+                # Individual Analyze Button with form
+                with st.form(key=f"analyze_form_{idx}"):
+                    analyze_button = st.form_submit_button(f"Analyze {project['name']}")
+                    if analyze_button:
+                        logging.info("ANALYZE BUTTON CLICKED")
+                        # Perform analysis and store results in session state
+                        if st.session_state['analyzed_projects'][idx]['culture_analysis'] is None:
+                            with st.spinner(f"Analyzing culture for {project['name']}..."):
+                                culture_analysis = analyze_project_culture(project['name'], project['readme'])
+                                logging.info(f"culture analysis : {culture_analysis}")
+                                st.session_state['analyzed_projects'][idx]['culture_analysis'] = culture_analysis
 
-                if analyze_button:
-                    logging.info("ANALYZE BUTTON CLICKED")
-                    # Perform analysis and store results in session state
-                    if st.session_state['analyzed_projects'][idx]['culture_analysis'] is None:
-                        with st.spinner(f"Analyzing culture for {project['name']}..."):
-                            culture_analysis = analyze_project_culture(project['name'], project['readme'])
-                            logging.info(f"culture analysis : {culture_analysis}")
-                            st.session_state['analyzed_projects'][idx]['culture_analysis'] = culture_analysis
+                            with st.spinner(f"Generating guidelines for {project['name']}..."):
+                                guidelines = generate_contribution_guidelines(project['name'])
+                                logging.info(f"guideline : {guidelines}")
+                                st.session_state['analyzed_projects'][idx]['guidelines'] = guidelines
 
-                        with st.spinner(f"Generating guidelines for {project['name']}..."):
-                            guidelines = generate_contribution_guidelines(project['name'])
-                            logging.info(f"guideline : {guidelines}")
-                            st.session_state['analyzed_projects'][idx]['guidelines'] = guidelines
+                        # Display analysis results
+                        st.markdown("### Culture Analysis")
+                        st.write(st.session_state['analyzed_projects'][idx]['culture_analysis'])
 
-                    # Display analysis results
-                    st.markdown("### Culture Analysis")
-                    st.write(st.session_state['analyzed_projects'][idx]['culture_analysis'])
-
-                    st.markdown("### Contribution Guidelines")
-                    st.write(st.session_state['analyzed_projects'][idx]['guidelines'])
+                        st.markdown("### Contribution Guidelines")
+                        st.write(st.session_state['analyzed_projects'][idx]['guidelines'])
 
                 st.markdown("---")  # Separator between projects
 
