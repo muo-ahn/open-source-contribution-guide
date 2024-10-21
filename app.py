@@ -93,10 +93,12 @@ if submit_button:
                     if st.session_state['analyzed_projects'][idx]['culture_analysis'] is None:
                         with st.spinner(f"Analyzing culture for {project['name']}..."):
                             culture_analysis = analyze_project_culture(project['name'], project['readme'])
+                            logging.info(f"culture analysis : {culture_analysis}")
                             st.session_state['analyzed_projects'][idx]['culture_analysis'] = culture_analysis
 
                         with st.spinner(f"Generating guidelines for {project['name']}..."):
                             guidelines = generate_contribution_guidelines(project['name'])
+                            logging.info(f"guideline : {guidelines}")
                             st.session_state['analyzed_projects'][idx]['guidelines'] = guidelines
 
                     # Display analysis results
