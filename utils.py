@@ -4,7 +4,7 @@ import config
 import boto3
 from github import Github
 from langchain_aws import BedrockLLM
-from langchain_core.prompts import PromptTemplate
+from langchain.prompts import PromptTemplate  # 올바른 PromptTemplate import
 from langchain.chains import LLMChain
 import tiktoken
 
@@ -43,6 +43,26 @@ def summarize_text(text, max_tokens=500):
     summary = llm.invoke(prompt)
     return summary
 
+
+# 새로운 요약 기능: 프롬프트 템플릿을 사용하여 설명을 요약
+def summarize_with_template(text, max_length=170):
+    # 템플릿 파일 불러오기
+    with open('templates/description_prompt.txt', 'r', encoding='utf-8') as file:
+        template_content = file.read()
+
+    # {{ max_length }}와 {{ text }}를 실제 값으로 대체
+    prompt = template_content.replace('{{ max_length }}', str(max_length))
+    prompt = prompt.replace('{{ text }}', text)
+
+    try:
+        # LLM에게 요약 요청
+        response = llm.invoke(prompt)
+        return response
+    except Exception as e:
+        return f"Error during summarization: {str(e)}"
+
+
+# GitHub 프로젝트를 추천하고, 설명을 요약하는 함수
 def get_recommended_projects(tech_stack, interest_areas):
     query = f"{interest_areas} language:{tech_stack} in:description"
 
@@ -55,16 +75,25 @@ def get_recommended_projects(tech_stack, interest_areas):
         except Exception:
             readme_contents = "No README available."
 
+        # Description 요약 기능 추가
+        description = repo.description or "No description provided."
+        if len(description) > 180:  # 180자 이상일 경우
+            # 템플릿을 사용해 요약
+            description = summarize_with_template(description, max_length=170)
+
         repo_info = {
             'name': repo.full_name,
-            'description': repo.description or "No description provided.",
+            'description': description,  # 요약된 description을 사용
             'url': repo.html_url,
+            'forks': repo.forks_count,  # 포크 수
+            'stars': repo.stargazers_count,  # 스타 수
             'readme': readme_contents,
         }
         top_repos.append(repo_info)
         if len(top_repos) >= 5:
             break
     return top_repos
+
 
 def analyze_project_culture(repo_name, readme_contents):
     # Summarize the README content
@@ -99,6 +128,7 @@ def analyze_project_culture(repo_name, readme_contents):
     analysis = chain.run(repo_name=repo_name, readme=summarized_readme)
     return analysis
 
+
 def generate_contribution_guidelines(repo_name):
     prompt_template = PromptTemplate(
         input_variables=["repo_name"],
@@ -107,3 +137,17 @@ def generate_contribution_guidelines(repo_name):
     chain = LLMChain(llm=llm, prompt=prompt_template)
     guidelines = chain.run(repo_name=repo_name)
     return guidelines
+
+
+# translate
+def translate_text_with_claude(text, target_language):
+    prompt = f"Please translate the following text into {target_language}:\n\n{text}"
+    
+    try:
+        # Claude 모델을 사용한 번역 요청
+        response = llm.invoke(prompt)
+        return response
+    except Exception as e:
+        return f"Error during translation: {str(e)}"
+        
+
