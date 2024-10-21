@@ -147,7 +147,7 @@ if project_data:
 
                 # Generate PDF using pdfkit
                 logging.info("Attempting to generate PDF with pdfkit...")
-                wkhtmltopdf_path = '/usr/local/bin/wkhtmltopdf'  # Update this path if necessary
+                wkhtmltopdf_path = '/usr/bin/wkhtmltopdf'  # Update this path if necessary
                 config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
                 pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
                 logging.info(f"PDF generated at {pdf_path}")
