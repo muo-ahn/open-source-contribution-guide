@@ -98,6 +98,7 @@ if submit_button:
                 analyze_button = st.button(f"Analyze {project['name']}", key=f"analyze_button_{idx}")
                 if analyze_button:
                     logging.info("ANALYZE BUTTON CLICKED")
+                    os.write(1,b'ANALYZE BUTTON CLICKED\n')
                     st.write("ANALYZE BUTTON CLICKED")
                     # Perform analysis and store results in session state
                     if st.session_state['analyzed_projects'][idx]['culture_analysis'] is None:
