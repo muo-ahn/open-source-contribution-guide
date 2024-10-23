@@ -9,6 +9,7 @@ Provide a detailed guide on how to contribute to the "{repo_name}" project. Incl
 - Any other important contribution information
 
 Make sure the guide is clear and beginner-friendly.
+**Important:** Present the guidelines directly without any introductions or additional comments.
 
 ---
 
