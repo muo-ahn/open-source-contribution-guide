@@ -39,6 +39,8 @@ if "language" not in st.session_state:
     st.session_state["language"] = "en"  # 기본 언어는 영어
 if "confirm_reset" not in st.session_state:
     st.session_state["confirm_reset"] = False  # 팝업에서 예를 눌렀는지 여부
+if "target_language" not in st.session_state:
+    st.session_state["target_language"] = "English"
 
 # AWS S3 Configuration
 S3_BUCKET_NAME = config.S3_BUCKET_NAME
@@ -65,6 +67,15 @@ def analyze_project(idx, project, language_pack):
         # 기여 가이드라인 생성
         guidelines = generate_contribution_guidelines(project['name'])
         st.session_state['analyzed_projects'][idx]['guidelines'] = guidelines
+
+    target_language = st.session_state.get('target_language', '').strip()
+    if target_language:
+        with st.spinner(f"Translating culture analysis into {target_language}..."):
+            translated_culture_analysis = translate_text_with_claude(culture_analysis, target_language)
+            st.session_state['analyzed_projects'][idx]['translated_culture_analysis'] = translated_culture_analysis
+        with st.spinner(f"Translating guidelines into {target_language}..."):
+            translated_guidelines = translate_text_with_claude(guidelines, target_language)
+            st.session_state['analyzed_projects'][idx]['translated_guidelines'] = translated_guidelines
 
     # 프로젝트 검색 여부 플래그를 업데이트하여 UI 즉시 반영
     st.experimental_rerun()
@@ -128,6 +139,7 @@ if submit_button:
         st.error(language_pack.get("error_message", "Please provide both your technology stack and areas of interest."))
     else:
         st.session_state['search_performed'] = True
+        st.session_state['target_language'] = target_language
         with st.spinner(language_pack.get("fetching_projects_message", "Fetching recommended projects...")):
             recommended_projects = get_recommended_projects(tech_stack, interest_areas)
             st.session_state['recommended_projects'] = recommended_projects
@@ -189,8 +201,20 @@ if st.session_state['search_performed']:
             else:
                 summary = st.session_state[f"summary_{idx}"]
 
-            st.markdown(f"**{language_pack.get('summary_label', 'Summary')}:**")
-            st.write(summary)
+            target_language = st.session_state.get('target_language', '').strip()
+            if target_language:
+                if f"translated_summary_{idx}" not in st.session_state:
+                    with st.spinner(f"Translating summary into {target_language}..."):
+                        translated_summary = translate_text_with_claude(summary, target_language)
+                        st.session_state[f"translated_summary_{idx}"] = translated_summary
+                else:
+                    translated_summary = st.session_state[f"translated_summary_{idx}"]
+
+                st.markdown(f"**{language_pack.get('summary_label', 'Summary')} ({target_language}):**")
+                st.write(translated_summary)
+            else:
+                st.markdown(f"**{language_pack.get('summary_label', 'Summary')}:**")
+                st.write(summary)
 
             # 프로젝트 분석 버튼에 고유 키 부여
             analyze_key = f"analyze_button_{idx}"
@@ -201,11 +225,31 @@ if st.session_state['search_performed']:
                 if st.button(f"{language_pack.get('analyze_button_label', 'Analyze')} {project['name']}", key=analyze_key):
                     analyze_project(idx, project, language_pack)  # 분석 후 페이지를 다시 렌더링하여 결과 즉시 표시
             else:
-                # 이미 분석된 경우 분석 결과 출력
-                st.markdown(f"### {language_pack.get('culture_analysis_label', 'Culture Analysis')}")
-                st.write(project_data['culture_analysis'])
-                st.markdown(f"### {language_pack.get('guidelines_label', 'Contribution Guidelines')}")
-                st.write(project_data['guidelines'])
+                target_language = st.session_state.get('target_language', '').strip()
+                if target_language:
+                    # Retrieve or translate the culture analysis
+                    translated_culture_analysis = project_data.get('translated_culture_analysis')
+                    if not translated_culture_analysis:
+                        with st.spinner(f"Translating culture analysis into {target_language}..."):
+                            translated_culture_analysis = translate_text_with_claude(project_data['culture_analysis'], target_language)
+                            st.session_state['analyzed_projects'][idx]['translated_culture_analysis'] = translated_culture_analysis
+
+                    # Retrieve or translate the guidelines
+                    translated_guidelines = project_data.get('translated_guidelines')
+                    if not translated_guidelines:
+                        with st.spinner(f"Translating guidelines into {target_language}..."):
+                            translated_guidelines = translate_text_with_claude(project_data['guidelines'], target_language)
+                            st.session_state['analyzed_projects'][idx]['translated_guidelines'] = translated_guidelines
+
+                    st.markdown(f"### {language_pack.get('culture_analysis_label', 'Culture Analysis')} ({target_language})")
+                    st.write(translated_culture_analysis)
+                    st.markdown(f"### {language_pack.get('guidelines_label', 'Contribution Guidelines')} ({target_language})")
+                    st.write(translated_guidelines)
+                else:
+                    st.markdown(f"### {language_pack.get('culture_analysis_label', 'Culture Analysis')}")
+                    st.write(project_data['culture_analysis'])
+                    st.markdown(f"### {language_pack.get('guidelines_label', 'Contribution Guidelines')}")
+                    st.write(project_data['guidelines'])
 
             st.markdown('<hr class="custom-divider">', unsafe_allow_html=True)  # 구분선 추가
 
@@ -220,8 +264,8 @@ if st.session_state['search_performed']:
                                 'name': data['project_info']['name'],
                                 'description': data['project_info']['description'],
                                 'url': data['project_info']['url'],
-                                'culture_analysis': data['culture_analysis'],
-                                'guidelines': data['guidelines']
+                                'culture_analysis': data.get('translated_culture_analysis', data['culture_analysis']),
+                                'guidelines': data.get('translated_guidelines', data['guidelines'])
                             }
                             for data in st.session_state['analyzed_projects'].values()
                             if data['culture_analysis'] is not None
