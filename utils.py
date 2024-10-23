@@ -143,7 +143,7 @@ def translate_text_with_claude(text, target_language):
     """
     prompt = (
         f"Translate the following text into {target_language}. "
-        f"Provide only the translated text without any additional comments or explanations.\n\n"
+        f"Provide only the translated text without any additional comments or explanations. Such as target language\n\n"
         f"{text}"
     )
     try:
