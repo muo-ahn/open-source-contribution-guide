@@ -110,7 +110,7 @@ st.markdown(
 )
 
 # 1. User Input Stage
-st.header(language_pack.get("user_input_header", "1. User Input"))
+st.header(language_pack.get("header_1", "1. User Input"))
 
 with st.form(key="user_input_form"):
     tech_stack = st.text_input(
@@ -155,7 +155,7 @@ if submit_button:
 
 # Display projects if search has been performed
 if st.session_state['search_performed']:
-    st.header(language_pack.get("project_recommendations_header", "2. Project Recommendations"))
+    st.header(language_pack.get("header_2", "2. Project Recommendations"))
     
     if not st.session_state['recommended_projects']:
         st.warning(language_pack.get("no_projects_warning", "No projects found. Please try different inputs."))
@@ -290,7 +290,11 @@ if st.session_state['search_performed']:
 
                         wkhtmltopdf_path = '/usr/bin/wkhtmltopdf'
                         config_pdfkit = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
-                        pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit)
+                        options = {
+                            'encoding': 'UTF-8',
+                            'enable-local-file-access': None,
+                        }
+                        pdfkit.from_file(html_path, pdf_path, configuration=config_pdfkit, options=options)
 
                         # Upload to S3
                         s3_key = f'project_details_{int(time.time())}.pdf'

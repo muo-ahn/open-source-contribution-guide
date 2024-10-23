@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
     <title>Project Details</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap');
+
+        body { font-family: 'Noto Sans KR', sans-serif; margin: 20px; }
         h1 { text-align: center; }
         h2 { color: #2e6c80; }
         .project { page-break-after: always; }
+        .content { white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -15,12 +18,16 @@
     {% for project in projects %}
     <div class="project">
         <h2>{{ project.name }}</h2>
-        <p><strong>Description:</strong> {{ project.description }}</p>
+        <p><strong>Description:</strong> {{ project.description | e }}</p>
         <p><strong>URL:</strong> <a href="{{ project.url }}">{{ project.url }}</a></p>
         <h3>Culture Analysis</h3>
-        <p>{{ project.culture_analysis }}</p>
+        <div class="content">
+            {{ project.culture_analysis | replace('\n', '<br>') | safe }}
+        </div>
         <h3>Contribution Guidelines</h3>
-        <p>{{ project.guidelines }}</p>
+        <div class="content">
+            {{ project.guidelines | replace('\n', '<br>') | safe }}
+        </div>
     </div>
     {% endfor %}
 </body>
