@@ -141,9 +141,12 @@ def translate_text_with_claude(text, target_language):
     """
     Claude 3.5 Sonnet을 사용하여 텍스트를 지정된 언어로 번역합니다.
     """
-    prompt = f"Please translate the following text into {target_language}:\n\n{text}"
+    prompt = (
+        f"Translate the following text into {target_language}. "
+        f"Provide only the translated text without any additional comments or explanations.\n\n"
+        f"{text}"
+    )
     try:
-        # LLM을 통해 번역 수행
         response = llm.invoke(prompt)
         return response.content  # content 속성에 직접 접근
     except Exception as e:
